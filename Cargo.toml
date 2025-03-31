@@ -1,0 +1,15 @@
+[package]
+name = "dir_compress_util"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bzip2 = "0.5.2"
+clap = { version = "4.5.34", features = ["derive"] }
+flate2 = "1.1.0"
+indicatif = "0.17.11"
+rayon = "1.10.0"
+tar = "0.4.44"
+walkdir = "2.5.0"
+xz2 = "0.1.7"
+zstd = "0.13.3"
