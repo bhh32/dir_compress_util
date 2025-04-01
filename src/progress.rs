@@ -93,7 +93,7 @@ impl CompressionProgress {
 
                     let min_required = std::cmp::min(10, progress.total_files) as usize;
                     let eta_string = if *counter < min_required || smoothed_eta.is_none() {
-                        format!("ETA: Calculating...")
+                        "ETA: Calculating...".to_string()
                     } else {
                         let avg_time = smoothed_eta.unwrap_or(0.0).clamp(0.005, 60.0);
                         let remaining = progress.total_files.saturating_sub(*counter as u64) as f64;
