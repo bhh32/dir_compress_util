@@ -1,6 +1,6 @@
 # Packit
 
-`Packit` is a versatile tool for compressing directories in Linux with support for various encoding formats. It also provides a progress bar to keep track of the compression process.
+`Packit` is a versatile tool for compressing directories and files with support for various encoding formats. It also provides a progress bar to keep track of the compression process.
 
 ## Features
 
