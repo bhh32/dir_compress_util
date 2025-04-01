@@ -1,11 +1,11 @@
 use crate::progress::CompressionProgress;
+use jwalk::{DirEntry, WalkDir};
 use std::{
     io::Write,
     sync::{Arc, Mutex},
     thread,
     time::Duration,
 };
-use walkdir::{DirEntry, WalkDir};
 
 pub fn num_files(src: &str) -> u64 {
     // Walk through the source directory and count all of the files
@@ -25,20 +25,10 @@ pub fn num_files(src: &str) -> u64 {
         .count() as u64
 }
 
-pub fn entries(src: &str) -> Vec<DirEntry> {
+pub fn entries(src: &str) -> Vec<DirEntry<((), ())>> {
     WalkDir::new(src)
         .into_iter()
         .filter_map(Result::ok)
-        .filter(|entry| {
-            // Count files and non-empty directories
-            entry.path().is_file()
-                || (entry.path().is_dir()
-                    && entry
-                        .path()
-                        .read_dir()
-                        .map(|mut dir| dir.next().is_some())
-                        .unwrap_or(false))
-        })
         .collect()
 }
 
@@ -49,7 +39,7 @@ pub fn update_status(progress: Arc<CompressionProgress>, working_status: Arc<Mut
             let status = { working_status.lock().unwrap().clone() };
 
             let message = if status.is_empty() {
-                format!("Switching directories...")
+                "Switching directories...".to_string()
             } else {
                 format!("Compressing: {status}")
             };
@@ -85,5 +75,6 @@ pub fn finalize_progress(progress: &CompressionProgress) {
     thread::sleep(Duration::from_millis(100));
 
     print!("\x1B[2j\x1B[H");
+    std::io::stderr().flush().unwrap();
     progress.finish("Compression complete! Your archive is read!");
 }

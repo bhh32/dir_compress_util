@@ -7,10 +7,10 @@ use rayon::prelude::*;
 use std::fs::File;
 use std::io::BufWriter;
 use std::sync::{Arc, Mutex};
-use std::thread;
 use std::time::Duration;
 use xz2::write::XzEncoder;
 use zip::CompressionMethod;
+use zip::write::FileOptions;
 use zip::{ZipWriter, write::SimpleFileOptions};
 use zstd::Encoder as ZstdEncoder;
 
@@ -203,10 +203,9 @@ pub fn encode_zip(src: String, output: String) -> Result<(), std::io::Error> {
             }
 
             progress.status_bar.tick();
-            thread::sleep(Duration::from_millis(10));
         }
 
-        let result = if path.is_file() {
+        if path.is_file() {
             let mut file = match File::open(path) {
                 Ok(file) => file,
                 Err(e) => {
@@ -217,30 +216,21 @@ pub fn encode_zip(src: String, output: String) -> Result<(), std::io::Error> {
 
             let mut zip_file = zip_writer.lock().unwrap();
             let options =
-                SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
+                FileOptions::<()>::default().compression_method(CompressionMethod::Deflated);
             let _ = zip_file
                 .start_file(file_name.to_string_lossy().to_string(), options)
                 .map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, format!("{err}")));
 
-            match std::io::copy(&mut file, &mut *zip_file) {
-                Ok(_) => Ok(()),
-                Err(e) => Err(e),
-            }
+            std::io::copy(&mut file, &mut *zip_file).unwrap_or_default();
         } else if path.is_dir() {
             let mut zip_file = zip_writer.lock().unwrap();
             let dir_name = format!("{}/", file_name.to_string_lossy());
             zip_file
                 .add_directory(dir_name, SimpleFileOptions::default())
-                .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
-        } else {
-            Ok(())
+                .unwrap_or_default();
         };
 
-        if let Err(e) = result {
-            eprintln!("Error: {e}");
-        } else {
-            progress.increment_total_progress();
-        }
+        progress.increment_total_progress();
     });
 
     {

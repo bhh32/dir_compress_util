@@ -5,7 +5,6 @@ use std::{
     os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
-    thread,
     time::Duration,
 };
 
@@ -13,7 +12,7 @@ use crate::{progress::CompressionProgress, utilities::entries};
 
 pub fn process_tar_file(
     path: &Path,
-    rel_path: &PathBuf,
+    rel_path: &Path,
     tar_file: &Arc<Mutex<tar::Builder<impl std::io::Write>>>,
     progress: &CompressionProgress,
     working_status: &Arc<Mutex<String>>,
@@ -29,7 +28,6 @@ pub fn process_tar_file(
     }
 
     progress.status_bar.tick();
-    thread::sleep(Duration::from_millis(10));
 
     // Open the file
     let mut file = File::open(path)?;
@@ -52,22 +50,9 @@ pub fn process_tar_file(
     );
 
     // Set the path in the header
-    if let Err(_e) = header.set_path(rel_path.as_path()) {
-        let stripped_path = match rel_path.strip_prefix(&path) {
-            Ok(stripped) => stripped,
-            Err(_) => {
-                // if the path can't be stripped skip the file
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::InvalidInput,
-                    "".to_string(),
-                ));
-            }
-        };
-        eprintln!(
-            "Warning: Failed to set long path for file {}",
-            stripped_path.display()
-        )
-    };
+    header.set_path(rel_path).unwrap_or_else(|err| {
+        eprintln!("Error setting path for {}: {}", file_display_name, err);
+    });
 
     header.set_cksum();
 
@@ -91,7 +76,7 @@ pub fn process_tar_file(
 // Function to process a directory
 pub fn process_tar_directory(
     path: &Path,
-    rel_path: &PathBuf,
+    rel_path: &Path,
     tar_file: &mut tar::Builder<impl std::io::Write>,
     progress: &CompressionProgress,
     working_status: &Arc<Mutex<String>>,
@@ -102,7 +87,7 @@ pub fn process_tar_directory(
     }
 
     // Append directory to tar
-    tar_file.append_dir(rel_path.clone(), path)?;
+    tar_file.append_dir(rel_path, path)?;
 
     // For empty directories, update progress
     if path.read_dir()?.next().is_none() {
