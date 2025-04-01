@@ -3,6 +3,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
+#[allow(dead_code)]
 #[derive(Clone)]
 pub struct CompressionProgress {
     pub multi_progress: MultiProgress,
@@ -123,6 +124,7 @@ pub struct ProgressReader<R: std::io::Read> {
     bytes_read: u64,
 }
 
+#[allow(dead_code)]
 impl<R: std::io::Read> ProgressReader<R> {
     pub fn new(inner: R, progress_bar: ProgressBar) -> Self {
         Self {

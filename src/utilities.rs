@@ -1,5 +1,4 @@
 use crate::progress::CompressionProgress;
-use bzip2::Compress;
 use std::{
     io::Write,
     sync::{Arc, Mutex},
