@@ -15,7 +15,7 @@ use zip::{ZipWriter, write::SimpleFileOptions};
 use zstd::Encoder as ZstdEncoder;
 
 #[derive(Parser)]
-#[command(name = "encode", version, about, long_about = None, author = "Bryan Hyland <bryan.hyland32@gmail.com")]
+#[command(version, about, long_about = None, author = "Bryan Hyland <bryan.hyland32@gmail.com")]
 pub struct Cli {
     #[
         arg(long, short, help = "Encoding format to use.", 
