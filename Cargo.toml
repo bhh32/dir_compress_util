@@ -2,6 +2,8 @@
 name = "packit"
 version = "0.1.0"
 edition = "2024"
+description = "Compress files and directories, built for large directories."
+authors = ["Bryan Hyland (bhh32) <bryan.hyland32@gmail.com>"]
 
 [dependencies]
 bzip2 = "0.5.2"
