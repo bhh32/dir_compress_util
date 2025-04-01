@@ -25,3 +25,7 @@ cd packit
 
 cargo build --release
 ```
+
+## Known Bugs
+- Visual artifacts
+- Possible corrupted files within the tar.* archives.
