@@ -611,6 +611,7 @@ dependencies = [
  "clap",
  "flate2",
  "indicatif",
+ "jwalk",
  "rayon",
  "tar",
  "walkdir",
