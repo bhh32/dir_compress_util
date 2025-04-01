@@ -34,33 +34,17 @@ pub fn encode_tar_gz(src: String, output: String) -> Result<(), std::io::Error> 
     let output_file = File::create(output)?;
     let output_writer = BufWriter::new(output_file);
     let encoder = GzEncoder::new(output_writer, GzCompression::default());
-    let tar_file = Arc::new(Mutex::new(tar::Builder::new(encoder)));
+    let tar_file = tar::Builder::new(encoder);
 
     let total_files = num_files(&src);
 
     let (progress, working_status) = setup_progress(total_files);
 
-    process_tar_entries(
-        &src,
-        tar_file.clone(),
-        progress.clone(),
-        working_status.clone(),
-    )?;
+    let tar_file = process_tar_entries(&src, tar_file, progress.clone(), working_status.clone())?;
 
-    let mut encoder = match Arc::try_unwrap(tar_file) {
-        Ok(encoder) => encoder.into_inner().expect("Mutex poisoned"),
-        Err(_) => {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "Multiple tar writers still in use!",
-            ));
-        }
-    };
+    let encoder = tar_file.into_inner()?;
 
     encoder.finish()?;
-
-    // Add a small delay to let all progress bars finish their drawing
-    std::thread::sleep(Duration::from_millis(100));
 
     // Clear the screen and reset the cursor before the final message
     finalize_progress(&progress);
@@ -85,25 +69,10 @@ pub fn encode_tar_bz(src: String, output: String) -> Result<(), std::io::Error> 
     // Create the progress bar and working status
     let (progress, working_status) = setup_progress(total_files);
 
-    // Process all files and directories
-    let tar_file = Arc::new(Mutex::new(tar_file));
+    // Process the tar entries
+    let tar_file = process_tar_entries(&src, tar_file, progress.clone(), working_status.clone())?;
 
-    process_tar_entries(
-        &src,
-        tar_file.clone(),
-        progress.clone(),
-        working_status.clone(),
-    )?;
-
-    let mut encoder = match Arc::try_unwrap(tar_file) {
-        Ok(encoder) => encoder.into_inner().expect("Mutex poisoned"),
-        Err(_) => {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "Multiple tar writers still in use!",
-            ));
-        }
-    };
+    let encoder = tar_file.into_inner()?;
 
     encoder.finish()?;
 
@@ -120,28 +89,17 @@ pub fn encode_tar_xz(src: String, output: String) -> Result<(), std::io::Error> 
     let output_file = File::create(output)?;
     let output_writer = BufWriter::new(output_file);
     let encoder = XzEncoder::new(output_writer, 6);
-    let tar_file = Arc::new(Mutex::new(tar::Builder::new(encoder)));
+    let tar_file = tar::Builder::new(encoder);
 
     let total_files = num_files(&src);
 
     let (progress, working_status) = setup_progress(total_files);
 
-    process_tar_entries(&src, tar_file.clone(), progress.clone(), working_status)?;
+    let tar_file = process_tar_entries(&src, tar_file, progress.clone(), working_status)?;
 
-    let mut encoder = match Arc::try_unwrap(tar_file) {
-        Ok(encoder) => encoder.into_inner().expect("Mutex poisoned"),
-        Err(_) => {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "Multiple tar writers still in use!",
-            ));
-        }
-    };
+    let encoder = tar_file.into_inner()?;
 
     encoder.finish()?;
-
-    // Add a small delay to let all progress bars finish their drawing
-    std::thread::sleep(Duration::from_millis(100));
 
     // Clear the screen and reset the cursor before the final message
     finalize_progress(&progress);
@@ -153,23 +111,15 @@ pub fn encode_tar_zstd(src: String, output: String) -> Result<(), std::io::Error
     let output_file = File::create(output)?;
     let output_writer = BufWriter::new(output_file);
     let encoder = ZstdEncoder::new(output_writer, 3)?;
-    let tar_file = Arc::new(Mutex::new(tar::Builder::new(encoder)));
+    let tar_file = tar::Builder::new(encoder);
 
     let total_files = num_files(&src);
 
     let (progress, working_status) = setup_progress(total_files);
 
-    process_tar_entries(&src, tar_file.clone(), progress.clone(), working_status)?;
+    let tar_file = process_tar_entries(&src, tar_file, progress.clone(), working_status)?;
 
-    let mut encoder = match Arc::try_unwrap(tar_file) {
-        Ok(encoder) => encoder.into_inner().expect("Mutex poisoned"),
-        Err(_) => {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "Multiple tar writers still in use!",
-            ));
-        }
-    };
+    let encoder = tar_file.into_inner()?;
 
     encoder.finish()?;
 

@@ -1,10 +1,10 @@
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::{
     fs::File,
     io::Write,
     os::unix::fs::PermissionsExt,
-    path::{Path, PathBuf},
-    sync::{Arc, Mutex},
+    path::Path,
+    sync::{Arc, Mutex, mpsc},
+    thread,
     time::Duration,
 };
 
@@ -13,7 +13,7 @@ use crate::{progress::CompressionProgress, utilities::entries};
 pub fn process_tar_file(
     path: &Path,
     rel_path: &Path,
-    tar_file: &Arc<Mutex<tar::Builder<impl std::io::Write>>>,
+    tar_file: &mut tar::Builder<impl Write>,
     progress: &CompressionProgress,
     working_status: &Arc<Mutex<String>>,
 ) -> Result<(), std::io::Error> {
@@ -57,10 +57,7 @@ pub fn process_tar_file(
     header.set_cksum();
 
     // Append the file with our custom header
-    {
-        let mut tar = tar_file.lock().unwrap();
-        tar.append(&header, &*buffer)?;
-    }
+    tar_file.append(&header, &*buffer)?;
 
     // Update the total progress
     progress.increment_total_progress();
@@ -100,30 +97,31 @@ pub fn process_tar_directory(
 
 pub fn process_tar_entries<W: Write + Send + 'static>(
     src: &str,
-    tar_file: Arc<Mutex<tar::Builder<W>>>,
+    mut tar_file: tar::Builder<W>,
     progress: Arc<CompressionProgress>,
     working_status: Arc<Mutex<String>>,
-) -> Result<(), std::io::Error> {
-    let entries = entries(src);
-    entries.into_par_iter().for_each(|entry| {
-        let path = entry.path();
-        let rel_path = match path.strip_prefix(src) {
-            Ok(stripped) => PathBuf::from(stripped),
-            Err(_) => {
-                return;
+) -> Result<tar::Builder<W>, std::io::Error> {
+    let (tx, rx) = mpsc::channel();
+    let src_string = src.to_string().clone();
+    // Producer thread: walk and send entries
+    let walker = thread::spawn(move || {
+        let entries = entries(&src_string.clone());
+        for entry in entries {
+            if tx.send(entry).is_err() {
+                break;
             }
-        };
+        }
+    });
+
+    // Receive and process entries
+    for entry in rx {
+        let path = entry.path();
+        let rel_path = path.strip_prefix(src).unwrap();
 
         let result = if path.is_file() {
-            process_tar_file(&path, &rel_path, &tar_file, &progress, &working_status)
+            process_tar_file(&path, rel_path, &mut tar_file, &progress, &working_status)
         } else if path.is_dir() {
-            process_tar_directory(
-                &path,
-                &rel_path,
-                &mut tar_file.lock().unwrap(),
-                &progress,
-                &working_status,
-            )
+            process_tar_directory(&path, rel_path, &mut tar_file, &progress, &working_status)
         } else {
             Ok(())
         };
@@ -131,7 +129,9 @@ pub fn process_tar_entries<W: Write + Send + 'static>(
         if let Err(e) = result {
             eprintln!("Error processing file: {}", e);
         }
-    });
+    }
 
-    Ok(())
+    walker.join().expect("Failed to join walker thread");
+
+    Ok(tar_file)
 }
